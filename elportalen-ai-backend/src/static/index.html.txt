@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elportalen AI - Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .demo-container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: 20px;
+        }
+        
+        .demo-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .demo-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .demo-header p {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        
+        .demo-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .feature {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .feature h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .feature p {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .demo-instructions {
+            background: #e8f5e8;
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .demo-instructions h3 {
+            color: #28a745;
+            margin-top: 0;
+        }
+        
+        .demo-instructions ul {
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .demo-note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .demo-note strong {
+            color: #856404;
+        }
+        
+        .api-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .api-info h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .api-endpoint {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>⚡ Elportalen AI</h1>
+            <p>Intelligent chatbot-løsning for elektrikere</p>
+        </div>
+        
+        <div class="demo-features">
+            <div class="feature">
+                <div class="feature-icon">🤖</div>
+                <h3>AI-analyse</h3>
+                <p>Automatisk vurdering af el-problemer baseret på beskrivelse og billeder</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📷</div>
+                <h3>Billedupload</h3>
+                <p>Kunder kan uploade billeder af el-problemer for bedre diagnose</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📧</div>
+                <h3>Automatiske notifikationer</h3>
+                <p>Elektrikeren modtager øjeblikkeligt besked om nye henvendelser</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">💰</div>
+                <h3>Prisestimater</h3>
+                <p>AI genererer vejledende prisestimater (Pro-pakke)</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📅</div>
+                <h3>Booking</h3>
+                <p>Direkte booking af tid via chatbotten (Pro-pakke)</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <h3>Statistik</h3>
+                <p>Detaljeret statistik over kundehenvendelser (Pro-pakke)</p>
+            </div>
+        </div>
+        
+        <div class="demo-instructions">
+            <h3>🎯 Test chatbotten</h3>
+            <p>Klik på chat-knappen i nederste højre hjørne for at teste Elportalen AI. Prøv at:</p>
+            <ul>
+                <li>Beskriv et el-problem (f.eks. "Min HPFI-afbryder springer hele tiden")</li>
+                <li>Upload et billede af en eltavle eller stikkontakt</li>
+                <li>Se hvordan AI\'en analyserer og svarer på dansk</li>
+                <li>Test booking-funktionaliteten (hvis Pro-pakke er aktiveret)</li>
+            </ul>
+        </div>
+        
+        <div class="demo-note">
+            <strong>Note:</strong> Dette er en demo-version. I en rigtig implementation ville AI\'en være trænet specifikt på danske el-cases og have adgang til en database med priser og elektrikere.
+        </div>
+        
+        <div class="api-info">
+            <h3>🔧 API Endepunkter</h3>
+            <p>Backend servicen eksponerer følgende endepunkter:</p>
+            
+            <div class="api-endpoint">POST /api/chat/message - Send besked til AI</div>
+            <div class="api-endpoint">POST /api/chat/upload - Upload filer</div>
+            <div class="api-endpoint">POST /api/booking/request - Opret booking (Pro)</div>
+            <div class="api-endpoint">GET /api/stats/conversations - Hent statistik (Pro)</div>
+            <div class="api-endpoint">POST /api/notifications/send - Send notifikationer</div>
+        </div>
+    </div>
+
+    <!-- Include the chatbot widget -->
+    <script src="/chatbot-widget.js"></script>
+    <script>
+        // Initialize the chatbot with demo configuration
+        document.addEventListener(\'DOMContentLoaded\', function() {
+            initElportalenChatbot({
+                apiKey: \'demo_api_key_12345\',
+                apiBaseUrl: \'/api\',
+                electricianName: \'Demo Elektriker\',
+                logoUrl: null, // No logo for demo
+                theme: \'default\',
+                position: \'bottom-right\'
+            });
+        });
+    </script>
+</body>
+</html>

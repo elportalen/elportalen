@@ -1,0 +1,152 @@
+from flask import Blueprint, request, jsonify
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime
+
+notifications_bp = Blueprint(\'notifications\', __name__)
+
+def send_email_notification(to_email, subject, html_content, text_content=None):
+    \"\"\"
+    Send email notification using SMTP (placeholder for SendGrid integration)
+    \"\"\"
+    try:
+        # In a real implementation, you would use SendGrid API
+        # For now, this is a placeholder that logs the email content
+        
+        print(f\"=== EMAIL NOTIFICATION ===\")
+        print(f\"To: {to_email}\")
+        print(f\"Subject: {subject}\")
+        print(f\"Content: {html_content}\")
+        print(f\"========================\")
+        
+        # Return success for demonstration
+        return True
+        
+    except Exception as e:
+        print(f\"Error sending email: {str(e)}\")
+        return False
+
+def send_sms_notification(to_phone, message):
+    \"\"\"
+    Send SMS notification using Twilio (placeholder)
+    \"\"\"
+    try:
+        # In a real implementation, you would use Twilio API
+        # For now, this is a placeholder that logs the SMS content
+        
+        print(f\"=== SMS NOTIFICATION ===\")
+        print(f\"To: {to_phone}\")
+        print(f\"Message: {message}\")
+        print(f\"======================\")
+        
+        # Return success for demonstration
+        return True
+        
+    except Exception as e:
+        print(f\"Error sending SMS: {str(e)}\")
+        return False
+
+def notify_electrician(electrician_data, conversation_data):
+    \"\"\"
+    Send notification to electrician about new customer inquiry
+    \"\"\"
+    try:
+        # Prepare email content
+        subject = f\"Ny kundehenvendelse - {conversation_data.get(\'problem_summary\', \'El-problem\')}\"
+        
+        html_content = f\"\"\"
+        <html>
+        <body>
+            <h2>Ny kundehenvendelse via Elportalen AI</h2>
+            
+            <h3>Kundens beskrivelse:</h3>
+            <p>{conversation_data.get(\'customer_message\', \'Ingen beskrivelse\')}</p>
+            
+            <h3>AI-vurdering:</h3>
+            <p><strong>{conversation_data.get(\'ai_assessment\', \'Ingen vurdering\')}</strong></p>
+            
+            <h3>AI-svar til kunde:</h3>
+            <p><em>\"{conversation_data.get(\'ai_response\', \'Intet svar\')}\"</em></p>
+            
+            {f\'<h3>Estimeret pris:</h3><p>{conversation_data.get(\"estimated_price\")} kr.</p>\' if conversation_data.get(\'estimated_price\') else \'\'}
+            
+            <h3>Vedhæftede filer:</h3>
+            {f\'<p>Kunden har uploadet {len(conversation_data.get(\"attachments\", []))} fil(er)</p>\' if conversation_data.get(\'attachments\') else \'<p>Ingen filer uploadet</p>\'}
+            
+            <hr>
+            <p><small>Denne besked er sendt automatisk fra Elportalen AI</small></p>
+        </body>
+        </html>
+        \"\"\"
+        
+        text_content = f\"\"\"
+        Ny kundehenvendelse via Elportalen AI
+        
+        Kundens beskrivelse:
+        {conversation_data.get(\'customer_message\', \'Ingen beskrivelse\')}
+        
+        AI-vurdering:
+        {conversation_data.get(\'ai_assessment\', \'Ingen vurdering\')}
+        
+        AI-svar til kunde:
+        \"{conversation_data.get(\'ai_response\', \'Intet svar\')}\"
+        
+        {f\'Estimeret pris: {conversation_data.get(\"estimated_price\")} kr.\' if conversation_data.get(\'estimated_price\') else \'\'}
+        
+        Vedhæftede filer: {len(conversation_data.get(\'attachments\', []))} fil(er)
+        \"\"\"
+        
+        # Send email notification
+        email_sent = send_email_notification(
+            electrician_data.get(\'email\'),
+            subject,
+            html_content,
+            text_content
+        )
+        
+        # Send SMS notification if phone number is provided
+        sms_sent = False
+        if electrician_data.get(\'phone\'):
+            sms_message = f\"Ny kundehenvendelse: {conversation_data.get(\'ai_assessment\', \'El-problem\')}. Tjek din e-mail for detaljer.\"
+            sms_sent = send_sms_notification(electrician_data.get(\'phone\'), sms_message)
+        
+        return {
+            \'email_sent\': email_sent,
+            \'sms_sent\': sms_sent
+        }
+        
+    except Exception as e:
+        print(f\"Error notifying electrician: {str(e)}\")
+        return {
+            \'email_sent\': False,
+            \'sms_sent\': False,
+            \'error\': str(e)
+        }
+
+@notifications_bp.route(\'/send\', methods=[\'POST\'])
+def send_notification():
+    \"\"\"
+    Endpoint to send notifications (for testing purposes)
+    \"\"\"
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({\'error\': \'No data provided\'}), 400
+        
+        electrician_data = data.get(\'electrician\', {})
+        conversation_data = data.get(\'conversation\', {})
+        
+        if not electrician_data.get(\'email\'):
+            return jsonify({\'error\': \'Electrician email is required\'}), 400
+        
+        result = notify_electrician(electrician_data, conversation_data)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f\"Error in send_notification endpoint: {str(e)}\")
+        return jsonify({\'error\': \'Internal server error\'}), 500
+

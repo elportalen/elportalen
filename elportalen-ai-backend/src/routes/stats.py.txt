@@ -1,0 +1,173 @@
+from flask import Blueprint, request, jsonify
+from datetime import datetime, timedelta
+import random
+
+stats_bp = Blueprint(\'stats\', __name__)
+
+def generate_mock_conversation_data(start_date, end_date):
+    \"\"\"
+    Generate mock conversation data for demonstration purposes
+    In a real implementation, this would query the database
+    \"\"\"
+    conversations = []
+    
+    # Generate some sample conversations
+    sample_problems = [
+        {
+            \'message\': \'Min HPFI-afbryder springer hele tiden\',
+            \'assessment\': \'Det ligner en defekt HPFI-afbryder, der bør udskiftes\',
+            \'response\': \'Det ser ud til at være en defekt HPFI-afbryder. Den bør udskiftes inden for kort tid af sikkerhedshensyn.\',
+            \'price\': 1200
+        },
+        {
+            \'message\': \'Stikkontakten i køkkenet virker ikke\',
+            \'assessment\': \'Sandsynligvis løse forbindelser i stikkontakten\',
+            \'response\': \'Denne type problem skyldes ofte løse forbindelser. Det skal ordnes af en elektriker.\',
+            \'price\': 450
+        },
+        {
+            \'message\': \'Automatsikringen går hele tiden\',
+            \'assessment\': \'Defekt automatsikring eller overbelastning\',
+            \'response\': \'Automatsikringen er sandsynligvis defekt og skal udskiftes. Kan også være overbelastning.\',
+            \'price\': 350
+        },
+        {
+            \'message\': \'Lyset flimrer i stuen\',
+            \'assessment\': \'Muligt problem med lysdæmper eller ledningsforbindelser\',
+            \'response\': \'Flimrende lys kan skyldes defekt lysdæmper eller løse forbindelser. Bør undersøges.\',
+            \'price\': 600
+        }
+    ]
+    
+    # Generate conversations for the date range
+    current_date = start_date
+    while current_date <= end_date:
+        # Random number of conversations per day (0-3)
+        daily_conversations = random.randint(0, 3)
+        
+        for i in range(daily_conversations):
+            problem = random.choice(sample_problems)
+            conversation_time = current_date + timedelta(
+                hours=random.randint(8, 18),
+                minutes=random.randint(0, 59)
+            )
+            
+            conversation = {
+                \'conversationId\': f\'conv_{current_date.strftime(\"%Y%m%d\")}_{i+1}\\',
+                \'timestamp\': conversation_time.isoformat(),
+                \'customerMessage\': problem[\'message\'],
+                \'aiAssessment\': problem[\'assessment\'],
+                \'aiResponse\': problem[\'response\'],
+                \'estimatedPrice\': problem[\'price\'],
+                \'bookingStatus\': random.choice([\'none\', \'pending\', \'booked\']),
+                \'attachments\': [
+                    {
+                        \'fileId\': f\'file_{random.randint(1000, 9999)}\\',
+                        \'fileName\': f\'problem_image_{i+1}.jpg\\',
+                        \'fileUrl\': f\'https://mock-storage.supabase.co/storage/v1/object/public/uploads/file_{random.randint(1000, 9999 )}.jpg\\'
+                    }
+                ] if random.choice([True, False]) else []
+            }
+            
+            conversations.append(conversation)
+        
+        current_date += timedelta(days=1)
+    
+    return conversations
+
+@stats_bp.route(\'/conversations\', methods=[\'GET\'])
+def get_conversation_stats():
+    \"\"\"
+    Get conversation statistics and logs (Pro package only)
+    \"\"\"
+    try:
+        # Get API key from Authorization header to identify electrician
+        auth_header = request.headers.get(\'Authorization\', \'\')
+        if not auth_header.startswith(\'Bearer \'):
+            return jsonify({\'error\': \'Invalid authorization header\'}), 401
+        
+        api_key = auth_header.replace(\'Bearer \', \'\')
+        
+        # In a real implementation, you would:\n        # 1. Validate the API key\n        # 2. Check if electrician has Pro package\n        # 3. Query the database for actual conversation data\n        
+        # Get date range from query parameters
+        start_date_str = request.args.get(\'startDate\')
+        end_date_str = request.args.get(\'endDate\')
+        
+        if not start_date_str or not end_date_str:
+            # Default to last 30 days
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=30)
+        else:
+            try:
+                start_date = datetime.fromisoformat(start_date_str.replace(\'Z\', \'+00:00\')).replace(tzinfo=None)
+                end_date = datetime.fromisoformat(end_date_str.replace(\'Z\', \'+00:00\')).replace(tzinfo=None)
+            except ValueError:
+                return jsonify({\'error\': \'Invalid date format. Use ISO 8601 format.\'}), 400
+        
+        # Generate mock data (in real implementation, query database)
+        conversations = generate_mock_conversation_data(start_date, end_date)
+        
+        # Calculate statistics
+        total_conversations = len(conversations)
+        successful_assessments = len([c for c in conversations if c[\'aiAssessment\'] != \'Kunne ikke udføre automatisk analyse\'])
+        total_bookings = len([c for c in conversations if c[\'bookingStatus\'] in [\'pending\', \'booked\']])
+        
+        # Calculate average response time (mock data)
+        avg_response_time = round(random.uniform(0.5, 2.0), 1)  # seconds
+        
+        response_data = {
+            \'totalConversations\': total_conversations,
+            \'successfulAssessments\': successful_assessments,
+            \'totalBookings\': total_bookings,
+            \'averageResponseTime\': avg_response_time,
+            \'dateRange\': {
+                \'startDate\': start_date.isoformat(),
+                \'endDate\': end_date.isoformat()
+            },
+            \'conversations\': conversations
+        }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        print(f\'Error getting conversation stats: {str(e)}\')
+        return jsonify({\'error\': \'Internal server error\'}), 500
+
+@stats_bp.route(\'/summary\', methods=[\'GET\'])
+def get_stats_summary():
+    \"\"\"
+    Get summary statistics for dashboard
+    \"\"\"
+    try:
+        # Get API key from Authorization header to identify electrician
+        auth_header = request.headers.get(\'Authorization\', \'\')
+        if not auth_header.startswith(\'Bearer \'):
+            return jsonify({\'error\': \'Invalid authorization header\'}), 401
+        
+        # Mock summary data
+        summary_data = {
+            \'thisMonth\': {
+                \'conversations\': random.randint(15, 45),
+                \'bookings\': random.randint(5, 15),
+                \'avgResponseTime\': round(random.uniform(0.8, 1.5), 1)
+            },
+            \'lastMonth\': {
+                \'conversations\': random.randint(10, 40),
+                \'bookings\': random.randint(3, 12),
+                \'avgResponseTime\': round(random.uniform(0.9, 1.8), 1)
+            },
+            \'topProblems\': [
+                {\'problem\': \'HPFI-afbryder fejl\', \'count\': random.randint(5, 15)},
+                {\'problem\': \'Stikkontakt problemer\', \'count\': random.randint(3, 10)},
+                {\'problem\': \'Automatsikring fejl\', \'count\': random.randint(2, 8)},
+                {\'problem\': \'Lys flimrer\', \'count\': random.randint(1, 6)}
+            ],
+            \'conversionRate\': round(random.uniform(0.15, 0.35), 2)  # Percentage of conversations that lead to bookings
+        }
+        
+        return jsonify(summary_data), 200
+        
+    except Exception as e:
+        print(f\'Error getting stats summary: {str(e)}\')
+        return jsonify({\'error\': \'Internal server error\'}), 500
+

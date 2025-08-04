@@ -1,0 +1,207 @@
+from flask import Blueprint, request, jsonify
+import os
+import uuid
+import json
+from datetime import datetime
+from openai import OpenAI
+from supabase import create_client, Client
+
+chat_bp = Blueprint(\'chat\', __name__)
+
+# Initialize OpenAI client
+openai_client = OpenAI(
+    api_key=os.getenv(\'OPENAI_API_KEY\'),
+    base_url=os.getenv(\'OPENAI_API_BASE\', \'https://api.openai.com/v1\' )
+)
+
+# Initialize Supabase client
+supabase_url = os.getenv(\'SUPABASE_URL\')
+supabase_key = os.getenv(\'SUPABASE_KEY\')
+supabase = None
+if supabase_url and supabase_key and supabase_url != \'your_supabase_url_here\':
+    try:
+        supabase = create_client(supabase_url, supabase_key)
+    except Exception as e:
+        print(f\"Error initializing Supabase: {str(e)}\")
+        # Continue without Supabase
+
+def analyze_electrical_problem(message, attachments=None):
+    \"\"\"
+    Analyze electrical problem using OpenAI GPT-4o with vision capabilities
+    \"\"\"
+    try:
+        # Prepare the system prompt for electrical analysis
+        system_prompt = \"\"\"Du er en erfaren dansk elektriker med mange års erfaring. Din opgave er at analysere el-problemer baseret på kundens beskrivelse og eventuelle billeder/videoer.\n\nSvar altid på dansk og vær professionel, men venlig. Giv konkrete og praktiske råd.\n\nNår du analyserer et problem:\n1. Identificer problemets art (f.eks. defekt sikring, HPFI-fejl, stikkontakt-problem)\n2. Vurder alvorsgraden (akut, skal ordnes snart, kan vente)\n3. Giv en kort forklaring på hvad der sandsynligvis er galt\n4. Anbefal næste skridt\n\nEksempler på gode svar:\n- \"Det ligner en ældre HPFI-afbryder, der bør udskiftes inden for kort tid.\"\n- \"Denne type stikkontakt ser ud til at have løse forbindelser - det skal ordnes af sikkerhedshensyn.\"\n- \"Automatsikringen er sandsynligvis defekt og skal udskiftes.\"\n\nHold svarene korte og præcise - maksimalt 2-3 sætninger.\"\"\"
+
+        # Prepare messages for OpenAI
+        messages = [
+            {\"role\": \"system\", \"content\": system_prompt},
+            {\"role\": \"user\", \"content\": message}
+        ]
+
+        # If there are image attachments, add them to the message
+        if attachments:
+            for attachment in attachments:
+                if attachment.get(\'fileType\', \'\').startswith(\'image/\'):
+                    # For now, we\'ll just mention that there\'s an image
+                    # In a full implementation, you\'d need to process the image URL
+                    messages[-1][\"content\"] += f\"\\n\\n[Billede vedhæftet: {attachment.get(\'fileName\', \'billede\')}]\"
+
+        # Call OpenAI API
+        response = openai_client.chat.completions.create(
+            model=\"gpt-4o\",
+            messages=messages,
+            max_tokens=300,
+            temperature=0.7
+        )
+
+        ai_response = response.choices[0].message.content
+
+        # Generate a problem summary and assessment
+        problem_summary = f\"Kunde beskriver: {message[:100]}...\"
+        ai_assessment = ai_response
+
+        return {
+            \'ai_response\': ai_response,
+            \'problem_summary\': problem_summary,
+            \'ai_assessment\': ai_assessment
+        }
+
+    except Exception as e:
+        print(f\"Error in AI analysis: {str(e)}\")
+        return {
+            \'ai_response\': \"Jeg kan desværre ikke analysere dit problem lige nu. Prøv igen senere eller kontakt elektrikeren direkte.\",
+            \'problem_summary\': message[:100] + \"...\",
+            \'ai_assessment\': \"Kunne ikke udføre automatisk analyse\"
+        }
+
+def estimate_price(problem_assessment, subscription_plan=\'basic\'):
+    \"\"\"
+    Generate price estimate based on problem assessment (Pro package only)
+    \"\"\"
+    if subscription_plan != \'pro\':
+        return None
+    
+    # Simple price estimation logic - in a real system, this would be more sophisticated
+    price_ranges = {
+        \'sikring\': (200, 500),
+        \'hpfi\': (800, 1500),
+        \'stikkontakt\': (300, 800),
+        \'lampe\': (200, 600),
+        \'eltavle\': (2000, 8000)
+    }
+    
+    assessment_lower = problem_assessment.lower()
+    
+    for keyword, (min_price, max_price) in price_ranges.items():
+        if keyword in assessment_lower:
+            # Return middle estimate
+            return (min_price + max_price) // 2
+    
+    # Default estimate
+    return 500
+
+@chat_bp.route(\'/message\', methods=[\'POST\'])
+def handle_chat_message():
+    \"\"\"
+    Handle incoming chat messages from the frontend widget
+    \"\"\"
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or \'message\' not in data:
+            return jsonify({\'error\': \'Message is required\'}), 400
+        
+        conversation_id = data.get(\'conversationId\', str(uuid.uuid4()))
+        message = data.get(\'message\', \'\')
+        attachments = data.get(\'attachments\', [])
+        
+        # Get API key from Authorization header to identify electrician
+        auth_header = request.headers.get(\'Authorization\', \'\')
+        if not auth_header.startswith(\'Bearer \'):
+            return jsonify({\'error\': \'Invalid authorization header\'}), 401
+        
+        api_key = auth_header.replace(\'Bearer \', \'\')
+        
+        # In a real implementation, you would validate the API key against the database
+        # For now, we\'ll assume it\'s valid and use a default subscription plan
+        subscription_plan = \'basic\'  # This would be fetched from the database
+        
+        # Analyze the electrical problem
+        analysis_result = analyze_electrical_problem(message, attachments)
+        
+        # Generate price estimate if Pro package
+        estimated_price = estimate_price(analysis_result[\'ai_assessment\'], subscription_plan)
+        booking_available = subscription_plan == \'pro\'
+        
+        # Store conversation in database (if Supabase is configured)
+        if supabase:
+            try:
+                # This is a simplified version - in reality you\'d need proper error handling
+                # and would store the conversation, messages, and assessments in separate tables
+                conversation_data = {
+                    \'id\': conversation_id,
+                    \'electrician_api_key\': api_key,
+                    \'customer_message\': message,
+                    \'ai_response\': analysis_result[\'ai_response\'],
+                    \'ai_assessment\': analysis_result[\'ai_assessment\'],
+                    \'estimated_price\': estimated_price,
+                    \'created_at\': datetime.utcnow().isoformat()
+                }
+                
+                # Note: This would need proper table structure as defined in the architecture
+                # supabase.table(\'conversations\').insert(conversation_data).execute()
+                
+            except Exception as e:
+                print(f\"Database error: {str(e)}\")
+                # Continue even if database fails
+        
+        # Prepare response
+        response_data = {
+            \'conversationId\': conversation_id,
+            \'aiResponse\': analysis_result[\'ai_response\'],
+            \'problemSummary\': analysis_result[\'problem_summary\'],
+            \'aiAssessment\': analysis_result[\'ai_assessment\'],
+            \'bookingAvailable\': booking_available
+        }
+        
+        if estimated_price:
+            response_data[\'estimatedPrice\'] = estimated_price
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        print(f\"Error handling chat message: {str(e)}\")
+        return jsonify({\'error\': \'Internal server error\'}), 500
+
+@chat_bp.route(\'/upload\', methods=[\'POST\'])
+def handle_file_upload():
+    \"\"\"
+    Handle file uploads from the frontend widget
+    \"\"\"
+    try:
+        if \'file\' not in request.files:
+            return jsonify({\'error\': \'No file provided\'}), 400
+        
+        file = request.files[\'file\']
+        if file.filename == \'\':
+            return jsonify({\'error\': \'No file selected\'}), 400
+        
+        # Generate unique file ID
+        file_id = str(uuid.uuid4())
+        file_extension = file.filename.rsplit(\'.\', 1)[1].lower() if \'.\' in file.filename else \'\'
+        
+        # In a real implementation, you would upload to Supabase Storage
+        # For now, we\'ll return a mock response
+        file_url = f\"https://mock-storage.supabase.co/storage/v1/object/public/uploads/{file_id}.{file_extension}\"
+        
+        return jsonify({
+            \'fileId\': file_id,
+            \'fileUrl\': file_url
+        } ), 200
+        
+    except Exception as e:
+        print(f\"Error handling file upload: {str(e)}\")
+        return jsonify({\'error\': \'Internal server error\'}), 500
+

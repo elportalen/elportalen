@@ -1,0 +1,113 @@
+from flask import Blueprint, request, jsonify
+import uuid
+from datetime import datetime
+
+booking_bp = Blueprint(\'booking\', __name__)
+
+@booking_bp.route(\'/request\', methods=[\'POST\'])
+def handle_booking_request():
+    \"\"\"
+    Handle booking requests from customers (Pro package only)
+    \"\"\"
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = [\'conversationId\', \'customerName\', \'customerEmail\', \'customerPhone\', \'preferredDateTime\']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({\'error\': f\'{field} is required\'}), 400
+        
+        # Get API key from Authorization header to identify electrician
+        auth_header = request.headers.get(\'Authorization\', \'\')
+        if not auth_header.startswith(\'Bearer \'):
+            return jsonify({\'error\': \'Invalid authorization header\'}), 401
+        
+        api_key = auth_header.replace(\'Bearer \', \'\')
+        
+        # In a real implementation, you would:\n        # 1. Validate the API key and check if electrician has Pro package\n        # 2. Store the booking request in the database\n        # 3. Send notification to electrician\n        # 4. Optionally integrate with calendar systems\n        
+        # For now, we\'ll simulate a successful booking request
+        booking_id = str(uuid.uuid4())
+        
+        booking_data = {
+            \'booking_id\': booking_id,
+            \'conversation_id\': data[\'conversationId\'],
+            \'customer_name\': data[\'customerName\'],
+            \'customer_email\': data[\'customerEmail\'],
+            \'customer_phone\': data[\'customerPhone\'],
+            \'preferred_date_time\': data[\'preferredDateTime\'],
+            \'booking_status\': \'pending\',
+            \'created_at\': datetime.utcnow().isoformat()
+        }
+        
+        # Log the booking for demonstration
+        print(f\"=== NEW BOOKING REQUEST ===\")
+        print(f\"Booking ID: {booking_id}\")
+        print(f\"Customer: {data[\'customerName\']} ({data[\'customerEmail\']})\")
+        print(f\"Phone: {data[\'customerPhone\']}\")
+        print(f\"Preferred time: {data[\'preferredDateTime\']}\")
+        print(f\"Conversation ID: {data[\'conversationId\']}\")
+        print(f\"===========================\")
+        
+        return jsonify({
+            \'success\': True,
+            \'message\': \'Booking request received successfully\',
+            \'bookingId\': booking_id
+        }), 200
+        
+    except Exception as e:
+        print(f\"Error handling booking request: {str(e)}\")
+        return jsonify({\'error\': \'Internal server error\'}), 500
+
+@booking_bp.route(\'/status/<booking_id>\', methods=[\'GET\'])
+def get_booking_status(booking_id):
+    \"\"\"
+    Get status of a booking request
+    \"\"\"
+    try:
+        # In a real implementation, you would fetch from database\n        # For now, return a mock status
+        
+        return jsonify({
+            \'bookingId\': booking_id,
+            \'status\': \'pending\',
+            \'message\': \'Booking request is being processed by the electrician\'
+        }), 200
+        
+    except Exception as e:
+        print(f\"Error getting booking status: {str(e)}\")
+        return jsonify({\'error\': \'Internal server error\'}), 500
+
+@booking_bp.route(\'/update/<booking_id>\', methods=[\'PUT\'])
+def update_booking_status(booking_id):
+    \"\"\"
+    Update booking status (for electrician use)
+    \"\"\"
+    try:
+        data = request.get_json()
+        
+        if not data or \'status\' not in data:
+            return jsonify({\'error\': \'Status is required\'}), 400
+        
+        valid_statuses = [\'pending\', \'confirmed\', \'cancelled\', \'completed\']
+        if data[\'status\'] not in valid_statuses:
+            return jsonify({\'error\': f\'Invalid status. Must be one of: {\", \".join(valid_statuses)}\'}), 400
+        
+        # In a real implementation, you would update the database\n        # For now, just log the update
+        
+        print(f\"=== BOOKING STATUS UPDATE ===\")
+        print(f\"Booking ID: {booking_id}\")
+        print(f\"New Status: {data[\'status\']}\")
+        print(f\"Notes: {data.get(\'notes\', \'None\')}\")
+        print(f\"=============================\")
+        
+        return jsonify({
+            \'success\': True,
+            \'message\': f\'Booking status updated to {data[\"status\"]}\',
+            \'bookingId\': booking_id,
+            \'status\': data[\'status\']
+        }), 200
+        
+    except Exception as e:
+        print(f\"Error updating booking status: {str(e)}\")
+        return jsonify({\'error\': \'Internal server error\'}), 500
+

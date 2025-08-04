@@ -1,0 +1,43 @@
+/**
+ * Elportalen AI Chatbot Widget
+ * 
+ * This widget can be embedded on any electrician\'s website to provide
+ * AI-powered customer support for electrical problems.
+ */
+
+class ElportalenChatbot {
+    constructor(config) {
+        this.config = {
+            apiKey: config.apiKey,
+            apiBaseUrl: config.apiBaseUrl || \'/api\
+            electricianName: config.electricianName || \'Elektriker\
+            logoUrl: config.logoUrl || null,
+            theme: config.theme || \'default\
+            position: config.position || \'bottom-right\
+            ...config
+        };
+        
+        this.conversationId = null;
+        this.isOpen = false;
+        this.isLoading = false;
+        
+        this.init();
+    }
+    
+    init() {
+        this.createWidget();
+        this.attachEventListeners();
+        this.injectStyles();
+    }
+    
+    createWidget() {
+        // Create main widget container
+        this.widget = document.createElement(\'div\');
+        this.widget.id = \'elportalen-chatbot\';
+        this.widget.className = `elportalen-widget ${this.config.position}`;
+        
+        // Create chat button
+        this.chatButton = document.createElement(\'button\');
+        this.chatButton.className = \'elportalen-chat-button\';
+        this.chatButton.innerHTML = `
+            <svg width=\
